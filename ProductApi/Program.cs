@@ -23,7 +23,8 @@ builder.Services.AddSwaggerGen();
 // Frontend için CORS (Next.js: http://localhost:3000)
 builder.Services.AddCors(opt =>
     opt.AddPolicy("frontend",
-        p => p.WithOrigins("http://localhost:3000")
+        p => p.WithOrigins("http://localhost:3000",
+        "http://localhost:3001"  )
               .AllowAnyHeader()
               .AllowAnyMethod()));
 
