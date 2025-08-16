@@ -1,56 +1,29 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ProductApi.Data;
+using ProductApi.Dtos;
 using ProductApi.Models;
+using ProductApi.Services;
 
 namespace ProductApi.Controllers;
 
 [ApiController]
 [Route("products")]
-public class ProductsController : ControllerBase
+public class ProductsController(IProductService service) : ControllerBase
 {
-    private readonly AppDbContext _db;
-    public ProductsController(AppDbContext db) => _db = db;
-
-    public record ProductCreateDto(string Name, decimal Price, string? Category);
-
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Product>>> GetAll() =>
-        await _db.Products.AsNoTracking().OrderByDescending(p => p.Id).ToListAsync();
+    public Task<List<Product>> GetAll() => service.GetAllAsync();
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Product>> Get(int id)
-    {
-        var p = await _db.Products.FindAsync(id);
-        return p is null ? NotFound() : Ok(p);
-    }
+    public async Task<ActionResult<Product>> Get(int id) =>
+        (await service.GetAsync(id)) is { } p ? Ok(p) : NotFound();
 
     [HttpPost]
     public async Task<ActionResult<Product>> Create([FromBody] ProductCreateDto dto)
     {
-        var entity = new Product { Name = dto.Name, Price = dto.Price, Category = dto.Category };
-        _db.Products.Add(entity);
-        await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(Get), new { id = entity.Id }, entity);
-    }
-
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] ProductCreateDto dto)
-    {
-        var p = await _db.Products.FindAsync(id);
-        if (p is null) return NotFound();
-        p.Name = dto.Name; p.Price = dto.Price; p.Category = dto.Category;
-        await _db.SaveChangesAsync();
-        return NoContent();
+        var p = await service.CreateAsync(dto.Name, dto.Price, dto.Category);
+        return CreatedAtAction(nameof(Get), new { id = p.Id }, p);
     }
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var p = await _db.Products.FindAsync(id);
-        if (p is null) return NotFound();
-        _db.Products.Remove(p);
-        await _db.SaveChangesAsync();
-        return NoContent();
-    }
+    public async Task<IActionResult> Delete(int id) =>
+        await service.DeleteAsync(id) ? NoContent() : NotFound();
 }
